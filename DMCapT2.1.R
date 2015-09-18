@@ -7,6 +7,18 @@ library(lsa)
 library(stats)
 library(corrplot)
 library(RColorBrewer)
+library(proxy)
+
+# Function to scale matricies between 0 and 1, colum-wise
+scale.matrix <- function(m) {
+    maxs <- apply(m, 2, max)
+    mins <- apply(m, 2, min)
+    scale.default(m, center = mins, scale = maxs - mins)
+}
+
+###############################################################################
+# Task 2.1
+###############################################################################
 
 # Import the reviews for each cuisine. Reviews for each cuisine are contained in a separate file.
 # For each file read in the file name and file contents.   Insert review text as a row in the data
@@ -60,82 +72,150 @@ dtm.tf <- dtm.tf[row_sums(dtm.tf) > 0,]
 sd2 <- summary(col_sums(dtm.tf))
 sd2
 tdm.tf <- as.TermDocumentMatrix(dtm.tf)
-#tdm.tf <- TermDocumentMatrix(corpus, control = list(stopwords = TRUE, stemming = FALSE, minWordLength = 3))
 
 # Create the term-document matrix with term frequency - inverse document frequency weighting.
 tdm.tfidf <- weightTfIdf(tdm.tf, normalize = TRUE)
 
-# Compute a topic model from term document matrix
-SEED <- 2010
-k<-25
-#Gibbs = LDA(tdm.tf, k = k, method = "Gibbs", control = list(seed = SEED, burnin = 1000, thin = 100, iter = 1000, keep = 50))
-
 # Compute the cosine similarity matrix from the term document matrix.
-#cosine.matrix <- crossprod_simple_triplet_matrix(tdm.tf)/(sqrt(col_sums(tdm.tf^2) %*% t(col_sums(tdm.tf^2))))
-cosine.matrix <- cosine(as.matrix(tdm.tf))
-rownames(cosine.matrix) <- cuisine.names
-colnames(cosine.matrix) <- cuisine.names
+tf.matrix <- cosine(as.matrix(tdm.tf))
+rownames(tf.matrix) <- cuisine.names
+colnames(tf.matrix) <- cuisine.names
+tf.scaled <- scale.matrix(tf.matrix)
+#write.matrix(format(tf.matrix, scientific=FALSE), file = paste("./", "sim_matrix_noidf.csv", sep="/"), sep=",")
+
+# Plot the results for the tf similartiy matrix
+corrplot(tf.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
 
 # Compute the cosine similarity matrix from the tf-idf term document matrix.
-#cosine.matrix.tfidf <- crossprod_simple_triplet_matrix(tdm.tfidf)/(sqrt(col_sums(tdm.tfidf^2) %*% t(col_sums(tdm.tfidf^2))))
-cosine.matrix.tfidf <- cosine(as.matrix(tdm.tfidf))
-rownames(cosine.matrix.tfidf) <- cuisine.names
-colnames(cosine.matrix.tfidf) <- cuisine.names
+tfidf.matrix <- cosine(as.matrix(tdm.tfidf))
+rownames(tfidf.matrix) <- cuisine.names
+colnames(tfidf.matrix) <- cuisine.names
+tfidf.scaled <- scale.matrix(tfidf.matrix)
+#write.matrix(format(tfidf.matrix, scientific=FALSE), file = paste("./", "sim_matrix_tfidf.csv", sep="/"), sep=",")
 
-#write.matrix(format(cosine.matrix, scientific=FALSE), file = paste("./", "sim_matrix_noidf.csv", sep="/"), sep=",")
-#write.matrix(format(cosine.matrix.tfidf, scientific=FALSE), file = paste("./", "sim_matrix_tfidf.csv", sep="/"), sep=",")
+# Plot the results for the tf-idf similartiy matrix
+corrplot(tfidf.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
 
-# Create visualization of matrix
-#blue.colors <- brewer.pal(9,"Blues")
-#heatmap(cosine.matrix, cexCol = 0.5, cexRow = 0.5, Rowv=NA, Colv=NA, col = blue.colors, revC = TRUE, scale="column")
-#heatmap(cosine.matrix.tfidf, cexCol = 0.7, cexRow = 0.7, Rowv=NA, Colv=NA, col = blue.colors, revC = TRUE, scale="column")
+# Compute a topic model from term document matrix
+SEED <- 2010
+k<-50
+Gibbs = LDA(dtm.tf, k = k, method = "Gibbs", control = list(seed = SEED, burnin = 1000, thin = 100, iter = 1000, keep = 50))
+topic.dist <- Gibbs@gamma
+
+# Compute the distance matrix using the topic distribution from the LDA model
+lda.dist <- dist(topic.dist, method = "euclidean", diag = TRUE, upper = TRUE)
+lda.matrix.dist <- as.matrix(lda.dist)
+rownames(lda.matrix.dist) <- cuisine.names
+colnames(lda.matrix.dist) <- cuisine.names
+
+# Convert the lda distance matrix to a similarity matrix
+lda.simil <- as.simil(lda.dist)
+lda.matrix.simil <- as.matrix(lda.simil, diag = 1)
+rownames(lda.matrix.simil) <- cuisine.names
+colnames(lda.matrix.simil) <- cuisine.names
+lda.scaled <- scale.matrix(lda.matrix.simil)
 
 ###############################################################################
 # Task 2.3
 ###############################################################################
 
-# Perform clustering on cosine similarity matrix with no idf
+# Perform K-Means clustering on term frequency similarity matrix - with 5 and 15 clusters
 set.seed(1010)
-km <- kmeans(cosine.matrix, 10, iter.max = 10)
+km.tf <- kmeans(tf.matrix, 5, algorithm = "MacQueen")
 cluster <- km$cluster
 size <- km$size
+tf.clust <- cbind(tf.matrix, cluster)
+tf.clust <- rbind(tf.clust, cluster)
+by.cluster <- order(tf.clust[,"cluster"])
+tf.clust <- tf.clust[by.cluster, by.cluster]
+tf.clust <- tf.clust[!rownames(tf.clust) %in% "cluster", ]
+tf.clust <- tf.clust[, !colnames(tf.clust) %in% "cluster"]
+tf.clust.scaled <- scale.matrix(tf.clust)
 
-
-cluster.matrix <- cbind(cosine.matrix, cluster)
-cluster.matrix <- rbind(cluster.matrix, cluster)
-
-by.cluster <- order(cluster.matrix[,"cluster"])
-cluster.matrix <- cluster.matrix[by.cluster, by.cluster]
-cluster.matrix <- cluster.matrix[!rownames(cluster.matrix) %in% "cluster", ]
-cluster.matrix <- cluster.matrix[, !colnames(cluster.matrix) %in% "cluster"]
-
-# Perform clustering on cosine similarity matrix with tf-idf
-set.seed(1010)
-km.tfidf <- kmeans(cosine.matrix.tfidf, centers = 10, iter.max = 10, algorith = "MacQueen")
-cluster <- km$cluster
-size.tfidf <- km$size
-
-cluster.matrix.tfidf <- cbind(cosine.matrix.tfidf, cluster)
-cluster.matrix.tfidf <- rbind(cluster.matrix.tfidf, cluster)
-
-by.cluster <- order(cluster.matrix.tfidf[,"cluster"])
-cluster.matrix.tfidf <- cluster.matrix.tfidf[by.cluster, by.cluster]
-cluster.matrix.tfidf <- cluster.matrix.tfidf[!rownames(cluster.matrix.tfidf) %in% "cluster", ]
-cluster.matrix.tfidf <- cluster.matrix.tfidf[, !colnames(cluster.matrix.tfidf) %in% "cluster"]
-
-# Plot the results for the tf (no idf) similartiy matrix
-corrplot(cosine.matrix, method = "circle", cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
-
-# Plot the results for the tf-idf similartiy matrix
-corrplot(cosine.matrix.tfidf, method = "circle", cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
-
-# Plot the results for k-means clustering of tf (no idf) matrix
-corrplot(cluster.matrix, method = "circle", cl.lim = c(0.4, 1), tl.cex = 0.6, tl.col = "black")
+# Plot the results for k-means clustering of tf  matrix
+corrplot(tf.clust.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
 corrRect(size)
 
+km.tf <- kmeans(tf.matrix, 15, algorithm = "MacQueen")
+cluster <- km$cluster
+size <- km$size
+tf.clust <- cbind(tf.matrix, cluster)
+tf.clust <- rbind(tf.clust, cluster)
+by.cluster <- order(tf.clust[,"cluster"])
+tf.clust <- tf.clust[by.cluster, by.cluster]
+tf.clust <- tf.clust[!rownames(tf.clust) %in% "cluster", ]
+tf.clust <- tf.clust[, !colnames(tf.clust) %in% "cluster"]
+tf.clust.scaled <- scale.matrix(tf.clust)
+
+# Plot the results for k-means clustering of tf matrix
+corrplot(tf.clust.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+corrRect(size)
+
+# Perform K-Means clustering on tf-idf similarity matrix - with 5 and 15 clusters
+set.seed(1010)
+km.tfidf <- kmeans(tfidf.matrix, centers = 5, algorithm = "MacQueen")
+cluster <- km.tfidf$cluster
+size <- km.tfidf$size
+tfidf.clust <- cbind(tfidf.matrix, cluster)
+tfidf.clust <- rbind(tfidf.clust, cluster)
+by.cluster <- order(tfidf.clust[,"cluster"])
+tfidf.clust <- tfidf.clust[by.cluster, by.cluster]
+tfidf.clust <- tfidf.clust[!rownames(tfidf.clust) %in% "cluster", ]
+tfidf.clust <- tfidf.clust[, !colnames(tfidf.clust) %in% "cluster"]
+tfidf.clust.scaled <- scale.matrix(tfidf.clust)
+
 # Plot results for k-means clustering of tf-idf matrix
-corrplot(cluster.matrix.tfidf, method = "circle", cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
-corrRect(size.tfidf)
+corrplot(tfidf.clust.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+corrRect(size)
+
+km.tfidf <- kmeans(tfidf.matrix, centers = 15, algorithm = "MacQueen")
+cluster <- km.tfidf$cluster
+size <- km.tfidf$size
+tfidf.clust <- cbind(tfidf.matrix, cluster)
+tfidf.clust <- rbind(tfidf.clust, cluster)
+by.cluster <- order(tfidf.clust[,"cluster"])
+tfidf.clust <- tfidf.clust[by.cluster, by.cluster]
+tfidf.clust <- tfidf.clust[!rownames(tfidf.clust) %in% "cluster", ]
+tfidf.clust <- tfidf.clust[, !colnames(tfidf.clust) %in% "cluster"]
+tfidf.clust.scaled <- scale.matrix(tfidf.clust)
+
+# Plot results for k-means clustering of tf-idf matrix
+corrplot(tfidf.clust.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+corrRect(size)
+
+# Perform K-Means clustering on the lda similarity matrix - with 5 and 15 clusters
+set.seed(1010)
+km.lda <- kmeans(lda.matrix.simil, centers = 5, algorithm = "MacQueen")
+cluster <- km.lda$cluster
+size <- km.lda$size
+lda.clust <- cbind(tfidf.matrix, cluster)
+lda.clust <- rbind(lda.clust, cluster)
+by.cluster <- order(lda.clust[,"cluster"])
+lda.clust <- lda.clust[by.cluster, by.cluster]
+lda.clust <- lda.clust[!rownames(lda.clust) %in% "cluster", ]
+lda.clust <- lda.clust[, !colnames(lda.clust) %in% "cluster"]
+lda.clust.scaled <- scale.matrix(lda.clust)
+
+# Plot results for k-means clustering of lda similarity matrix
+corrplot(lda.clust.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+corrRect(size)
+
+# Perform K-Means clustering on the lda similarity matrix - with 5 and 15 clusters
+set.seed(1010)
+km.lda <- kmeans(lda.matrix.simil, centers = 5, algorithm = "MacQueen")
+cluster <- km.lda$cluster
+size <- km.lda$size
+lda.clust <- cbind(lda.matrix.simil, cluster)
+lda.clust <- rbind(lda.clust, cluster)
+by.cluster <- order(lda.clust[,"cluster"])
+lda.clust <- lda.clust[by.cluster, by.cluster]
+lda.clust <- lda.clust[!rownames(lda.clust) %in% "cluster", ]
+lda.clust <- lda.clust[, !colnames(lda.clust) %in% "cluster"]
+lda.clust.scaled <- scale.matrix(lda.clust)
+
+# Plot results for k-means clustering of lda similarity matrix
+corrplot(lda.clust.scaled, method = "circle", cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+corrRect(size)
 
 #Plot the results for hierarchical clustering of the tf matrix
 corrplot(cosine.matrix, method = "circle", order = "hclust", hclust.method ="average", addrect = 10, cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black", outline = TRUE)
