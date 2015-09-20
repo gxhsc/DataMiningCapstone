@@ -198,7 +198,7 @@ corrplot(tfidf.clust.scaled, method = "circle", is.corr = FALSE, title = "TF-IDF
 corrRect(size)
 dev.off()
 
-km.tfidf <- kmeans(tfidf.matrix, centers = 25, algorithm = "MacQueen")
+km.tfidf <- kmeans(tfidf.matrix, centers = 17, algorithm = "MacQueen")
 cluster <- km.tfidf$cluster
 size <- km.tfidf$size
 tfidf.clust <- cbind(tfidf.matrix, cluster)
@@ -210,8 +210,8 @@ tfidf.clust <- tfidf.clust[, !colnames(tfidf.clust) %in% "cluster"]
 tfidf.clust.scaled <- scale.mat(tfidf.clust)
 
 # Plot results for k-means clustering of tf-idf matrix
-png(height=1200, width=1200, pointsize=25, file="p_km_tfidf_25.png")
-corrplot(tfidf.clust.scaled, method = "circle", is.corr = FALSE, title = "TF-IDF with K-Means Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+png(height=1200, width=1200, pointsize=25, file="p_km_tfidf_17.png")
+corrplot(tfidf.clust.scaled, method = "circle", is.corr = FALSE, title = "TF-IDF with K-Means Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
 corrRect(size)
 dev.off()
 
@@ -219,7 +219,7 @@ dev.off()
 km.lda <- kmeans(lda.matrix.simil, centers = 10, algorithm = "MacQueen")
 cluster <- km.lda$cluster
 size <- km.lda$size
-lda.clust <- cbind(tfidf.matrix, cluster)
+lda.clust <- cbind(lda.matrix.simil, cluster)
 lda.clust <- rbind(lda.clust, cluster)
 by.cluster <- order(lda.clust[,"cluster"])
 lda.clust <- lda.clust[by.cluster, by.cluster]
@@ -234,7 +234,7 @@ corrRect(size)
 dev.off()
 
 # Perform K-Means clustering on the lda similarity matrix 
-km.lda <- kmeans(lda.matrix.simil, centers = 25, algorithm = "MacQueen")
+km.lda <- kmeans(lda.matrix.simil, centers = 17, algorithm = "MacQueen")
 cluster <- km.lda$cluster
 size <- km.lda$size
 lda.clust <- cbind(lda.matrix.simil, cluster)
@@ -246,8 +246,8 @@ lda.clust <- lda.clust[, !colnames(lda.clust) %in% "cluster"]
 lda.clust.scaled <- scale.mat(lda.clust)
 
 # Plot results for k-means clustering of lda similarity matrix
-png(height=1200, width=1200, pointsize=25, file="p_km_lda_25.png")
-corrplot(lda.clust.scaled, method = "circle", is.corr = FALSE, title = "LDA with K-Means Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+png(height=1200, width=1200, pointsize=25, file="p_km_lda_17.png")
+corrplot(lda.clust.scaled, method = "circle", is.corr = FALSE, title = "LDA with K-Means Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
 corrRect(size)
 dev.off()
 
@@ -315,7 +315,7 @@ dev.off()
 # Perform Hierarchical clustering on tf-idf distance matrix 
 tfidf.dist <- as.dist(tfidf.matrix)
 hc.tfidf <- hclust(tfidf.dist, method = "average")
-cluster <- cutree(hc.tfidf, k = 25)
+cluster <- cutree(hc.tfidf, k = 17)
 size <- as.vector(table(cluster))
 tfidf.clust <- cbind(tfidf.matrix, cluster)
 tfidf.clust <- rbind(tfidf.clust, cluster)
@@ -326,8 +326,8 @@ tfidf.clust <- tfidf.clust[, !colnames(tfidf.clust) %in% "cluster"]
 tfidf.clust.scaled <- scale.mat(tfidf.clust)
 
 # Plot the results for hierarchical clustering of tf-idf matrix
-png(height=1200, width=1200, pointsize=25, file="p_hc_tfidf_25.png")
-corrplot(tfidf.clust.scaled, method = "circle", is.corr = FALSE, title = "TF-IDF with Hierarchical Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+png(height=1200, width=1200, pointsize=25, file="p_hc_tfidf_17.png")
+corrplot(tfidf.clust.scaled, method = "circle", is.corr = FALSE, title = "TF-IDF with Hierarchical Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
 corrRect(size)
 dev.off()
 
@@ -351,7 +351,7 @@ dev.off()
 
 # Perform Heirarchical clustering on lda distance matrix
 hc.lda <- hclust(lda.dist, method = "average")
-cluster <- cutree(hc.lda, k = 25)
+cluster <- cutree(hc.lda, k = 17)
 size <- as.vector(table(cluster))
 lda.clust <- cbind(lda.matrix.simil, cluster)
 lda.clust <- rbind(lda.clust, cluster)
@@ -362,7 +362,7 @@ lda.clust <- lda.clust[, !colnames(lda.clust) %in% "cluster"]
 lda.clust.scaled <- scale.mat(lda.clust)
 
 # Plot results for heirarchical clustering of lda similarity matrix
-png(height=1200, width=1200, pointsize=25, file="p_hc_lda_25.png")
-corrplot(lda.clust.scaled, method = "circle", is.corr = FALSE, title = "LDA with Hierarchical Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+png(height=1200, width=1200, pointsize=25, file="p_hc_lda_17.png")
+corrplot(lda.clust.scaled, method = "circle", is.corr = FALSE, title = "LDA with Hierarchical Clustering", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
 corrRect(size)
 dev.off()
