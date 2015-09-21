@@ -94,7 +94,7 @@ tf.scaled <- scale.mat(tf.matrix)
 
 # Plot the results for the tf similartiy matrix
 png(height=1200, width=1200, pointsize=25, file="p_tf.png")
-corrplot(tf.scaled, method = "circle", is.corr = FALSE, title = "Term Frequency", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.5, tl.col = "black")
+corrplot(tf.scaled, method = "circle", is.corr = FALSE, title = "Term Frequency", mar=c(0,0,1,0), cl.lim = c(0, 1), tl.cex = 0.6, tl.col = "black")
 dev.off()
 
 # Compute the cosine similarity matrix from the tf-idf term document matrix.
